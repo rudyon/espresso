@@ -68,7 +68,7 @@ func installFromBean(beanPath string) error {
 	return processBeanFile(filePath)
 }
 
-// Function to process the .bean file
+// Function to process the .bean file using regex
 func processBeanFile(beanFilePath string) error {
 	file, err := os.Open(beanFilePath)
 	if err != nil {
@@ -78,6 +78,10 @@ func processBeanFile(beanFilePath string) error {
 
 	var dependencies []string
 	var commands []string
+
+	// Regex patterns for dependency and command extraction
+	depPattern := regexp.MustCompile(`^depends:\s*(.+)$`)
+	cmdPattern := regexp.MustCompile(`^[^#].*`)
 
 	scanner := bufio.NewScanner(file)
 	inCommandsSection := false
@@ -90,34 +94,22 @@ func processBeanFile(beanFilePath string) error {
 		}
 
 		// Check for dependencies section
-		if strings.HasPrefix(line, "depends:") {
-			inCommandsSection = false
-			depLines := strings.Split(line[len("depends:"):], " ")
+		if matches := depPattern.FindStringSubmatch(line); matches != nil {
+			depLines := strings.Split(matches[1], " ")
 			for _, dep := range depLines {
 				dependencies = append(dependencies, dep+".bean")
 			}
-		}
-
-		// Check for commands section
-		if strings.HasPrefix(line, "#") {
-			// Skip comment lines
 			continue
 		}
 
-		if strings.HasPrefix(line, "echo ") {
-			// Skip echo lines
-			continue
-		}
-
-		if !inCommandsSection {
-			if strings.HasPrefix(line, "#") {
+		// Check for commands
+		if cmdPattern.MatchString(line) {
+			if !inCommandsSection {
 				inCommandsSection = true
 			}
-			continue
+			// Collect commands
+			commands = append(commands, line)
 		}
-
-		// Collect commands
-		commands = append(commands, line)
 	}
 
 	if err := scanner.Err(); err != nil {
