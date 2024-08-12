@@ -19,13 +19,19 @@ func ensureEspressoDir() error {
 }
 
 func downloadBean(beanFile string) (string, error) {
-    url := fmt.Sprintf("https://raw.githubusercontent.com/rudyon/espresso/main/beans/%s.bean", beanFile)
+    url := fmt.Sprintf("https://raw.githubusercontent.com/rudyon/espresso/main/beans/%s", beanFile)
     output := fmt.Sprintf("/etc/espresso/%s", beanFile)
+
+    fmt.Printf("Downloading %s from %s\n", beanFile, url)
+
     cmd := exec.Command("wget", url, "-O", output)
     cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin")
-    if err := cmd.Run(); err != nil {
-        return "", fmt.Errorf("error downloading .bean file: %v", err)
+    outputBytes, err := cmd.CombinedOutput()
+    if err != nil {
+        return "", fmt.Errorf("error downloading .bean file: %v\nOutput: %s", err, outputBytes)
     }
+
+    fmt.Printf("Downloaded .bean file to: %s\n", output)
     return output, nil
 }
 
@@ -80,6 +86,8 @@ func installFromBean(beanFile string) error {
         cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin") // Ensure PATH is set
         output, err := cmd.CombinedOutput()
         if err != nil {
+            fmt.Printf("Error executing command '%s': %v\n", cmdStr, err)
+            fmt.Printf("Output: %s\n", output)
             return fmt.Errorf("error executing command '%s': %v\nOutput: %s", cmdStr, err, output)
         }
         fmt.Printf("Output:\n%s\n", output)
