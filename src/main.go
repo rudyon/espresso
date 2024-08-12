@@ -113,7 +113,7 @@ func main() {
 		return
 	}
 
-	// Parse and install dependencies
+	// Parse dependencies from the main package file
 	dependenciesFilePath := filepath.Join("/etc/espresso", packageName)
 	dependencies, err := parseDependencies(dependenciesFilePath)
 	if err != nil {
@@ -121,6 +121,7 @@ func main() {
 		return
 	}
 
+	// Install each dependency
 	for _, dep := range dependencies {
 		fmt.Printf("Checking and installing dependency: %s\n", dep)
 		if err := installFromBean(dep); err != nil {
