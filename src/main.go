@@ -82,8 +82,8 @@ func parseDependencies(filePath string) ([]string, error) {
 	defer file.Close()
 
 	// Define regex pattern for dependencies line
-	dependsPattern := regexp.MustCompile(`^depends\=("([^"]+)")*`)
-
+	dependsPattern := regexp.MustCompile(`^depends=\(([^)]+)\)`)
+	
 	// Read dependencies
 	var dependencies []string
 	scanner := bufio.NewScanner(file)
@@ -91,10 +91,12 @@ func parseDependencies(filePath string) ([]string, error) {
 		line := strings.TrimSpace(scanner.Text())
 		if line != "" {
 			// Check if line contains dependencies
-			if dependsPattern.MatchString(line) {
-				matches := dependsPattern.FindStringSubmatch(line)
-				if len(matches) > 1 {
-					dependencies = append(dependencies, strings.Split(matches[1], `" "`)...)
+			if matches := dependsPattern.FindStringSubmatch(line); len(matches) > 1 {
+				// Split the dependencies by space and remove quotes
+				deps := strings.Fields(matches[1])
+				for _, dep := range deps {
+					dependency := strings.Trim(dep, `"`)
+					dependencies = append(dependencies, dependency + ".bean")
 				}
 			}
 		}
@@ -131,7 +133,7 @@ func main() {
 	// Install each dependency
 	for _, dep := range dependencies {
 		fmt.Printf("Checking and installing dependency: %s\n", dep)
-		if err := installFromBean(dep + ".bean"); err != nil {
+		if err := installFromBean(dep); err != nil {
 			fmt.Printf("error installing dependency %s: %v\n", dep, err)
 			return
 		}
