@@ -25,17 +25,13 @@ func executeCommand(command string, args ...string) error {
 	return err
 }
 
-// Function to install from a .bean file
-func installFromBean(beanPath string) error {
+// Function to install from a .bean file given its URL
+func installFromBean(beanName, url string) error {
 	// Ensure the /etc/espresso directory exists
 	err := os.MkdirAll("/etc/espresso", 0755)
 	if err != nil {
 		return fmt.Errorf("error creating directory: %v", err)
 	}
-
-	// Build the URL to download the .bean file
-	url := "https://raw.githubusercontent.com/rudyon/espresso/main/beans/" + beanPath
-	fmt.Printf("Downloading .bean file from URL: %s\n", url)
 
 	// Download the .bean file
 	response, err := http.Get(url)
@@ -50,7 +46,7 @@ func installFromBean(beanPath string) error {
 	}
 
 	// Write the .bean file to /etc/espresso
-	filePath := filepath.Join("/etc/espresso", beanPath)
+	filePath := filepath.Join("/etc/espresso", beanName)
 	file, err := os.Create(filePath)
 	if err != nil {
 		return fmt.Errorf("error creating .bean file: %v", err)
@@ -68,9 +64,9 @@ func installFromBean(beanPath string) error {
 		return fmt.Errorf("error setting file permissions: %v", err)
 	}
 
-	// Execute the .bean file as a shell script
-	return executeCommand("/bin/bash", filePath)
+	return nil
 }
+
 
 // Parse dependencies from a .bean file
 func parseDependencies(filePath string) ([]string, error) {
@@ -121,6 +117,7 @@ func main() {
 	}
 
 	packageName := os.Args[2] + ".bean"
+	baseURL := "https://example.com/beans/" // Replace with the actual base URL
 
 	// Parse dependencies from the main package file
 	dependenciesFilePath := filepath.Join("/etc/espresso", packageName)
@@ -132,9 +129,9 @@ func main() {
 
 	// Define a function to download a .bean file
 	downloadBean := func(beanName string) error {
-		url := "https://example.com/beans/" + beanName
+		url := baseURL + beanName
 		fmt.Printf("Downloading %s...\n", beanName)
-		return installFromBean(beanName)
+		return installFromBean(beanName, url)
 	}
 
 	// Download all .bean files (dependencies and the main package)
@@ -156,7 +153,7 @@ func main() {
 	fmt.Println("Installing packages...")
 	for _, dep := range dependencies {
 		fmt.Printf("Installing dependency: %s\n", dep)
-		if err := installFromBean(dep); err != nil {
+		if err := installFromBean(dep, baseURL+dep); err != nil {
 			fmt.Printf("error installing dependency %s: %v\n", dep, err)
 			return
 		}
@@ -164,12 +161,11 @@ func main() {
 
 	// Install the main package
 	fmt.Printf("Installing package: %s\n", packageName)
-	if err := installFromBean(packageName); err != nil {
+	if err := installFromBean(packageName, baseURL+packageName); err != nil {
 		fmt.Printf("error installing package %s: %v\n", packageName, err)
 		return
 	}
 
 	fmt.Println("Installation complete!")
 }
-
 
