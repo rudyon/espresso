@@ -72,7 +72,7 @@ func installFromBean(beanFile string) error {
     }
     defer os.Remove(filePath)
 
-    fmt.Printf("Downloaded .bean file to: %s\n", filePath) // Debug output
+    fmt.Printf("Downloaded .bean file to: %s\n", filePath)
 
     file, err := os.Open(filePath)
     if err != nil {
@@ -108,6 +108,7 @@ func installFromBean(beanFile string) error {
         cmdParts := strings.Split(cmdStr, " ")
         cmd := exec.Command(cmdParts[0], cmdParts[1:]...)
         cmd.Dir = "/etc/espresso" // Ensure commands are run in the correct directory
+        cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin") // Ensure PATH is set
         output, err := cmd.CombinedOutput()
         if err != nil {
             return fmt.Errorf("error executing command '%s': %v\nOutput: %s", cmdStr, err, output)

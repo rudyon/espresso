@@ -1,7 +1,10 @@
 #!/bin/bash
+
+echo "Starting installation script..."
+
 # Ensure /etc/espresso directory exists
 mkdir -p /etc/espresso
-cd /etc/espresso || exit
+cd /etc/espresso || { echo "Error: cd failed"; exit 1; }
 
 # Download nano source
 wget https://www.nano-editor.org/dist/v8/nano-8.1.tar.xz -O nano.8.1.tar.xz
@@ -18,7 +21,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Change directory to nano
-cd nano-8.1 || exit
+cd nano-8.1 || { echo "Error: cd to nano directory failed"; exit 1; }
 
 # Configure and install
 ./configure
@@ -38,4 +41,6 @@ if [ $? -ne 0 ]; then
     echo "Error: make install failed"
     exit 1
 fi
+
+echo "Installation completed successfully."
 
