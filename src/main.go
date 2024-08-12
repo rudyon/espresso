@@ -19,16 +19,20 @@ func executeCommand(cmd string) error {
 		return errors.New("no command provided")
 	}
 
-	// If the command is a script, ensure it has execute permissions
+	// If the command is a shell script, use /bin/bash to execute it
 	if strings.HasSuffix(cmdArgs[0], ".sh") {
+		// Ensure the script has execute permissions
 		if err := os.Chmod(cmdArgs[0], 0755); err != nil {
 			return fmt.Errorf("failed to set execute permissions: %w", err)
 		}
-		// Execute the script directly using /bin/bash
-		cmdArgs = append([]string{"/bin/bash"}, cmdArgs...)
+		// Execute the script using /bin/bash
+		command := exec.Command("/bin/bash", cmdArgs[0])
+		command.Stdout = os.Stdout
+		command.Stderr = os.Stderr
+		return command.Run()
 	}
 
-	// Create the exec.Command with the split arguments
+	// For other commands, split and run normally
 	command := exec.Command(cmdArgs[0], cmdArgs[1:]...)
 	command.Stdout = os.Stdout
 	command.Stderr = os.Stderr
