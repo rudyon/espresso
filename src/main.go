@@ -130,9 +130,32 @@ func main() {
 		return
 	}
 
-	// Install each dependency
+	// Define a function to download a .bean file
+	downloadBean := func(beanName string) error {
+		url := "https://example.com/beans/" + beanName
+		fmt.Printf("Downloading %s...\n", beanName)
+		return installFromBean(beanName)
+	}
+
+	// Download all .bean files (dependencies and the main package)
+	// Ensure main package is downloaded last
 	for _, dep := range dependencies {
-		fmt.Printf("Checking and installing dependency: %s\n", dep)
+		if err := downloadBean(dep); err != nil {
+			fmt.Printf("error downloading dependency %s: %v\n", dep, err)
+			return
+		}
+	}
+
+	// Download the main package file
+	if err := downloadBean(packageName); err != nil {
+		fmt.Printf("error downloading package %s: %v\n", packageName, err)
+		return
+	}
+
+	// Install each .bean file
+	fmt.Println("Installing packages...")
+	for _, dep := range dependencies {
+		fmt.Printf("Installing dependency: %s\n", dep)
 		if err := installFromBean(dep); err != nil {
 			fmt.Printf("error installing dependency %s: %v\n", dep, err)
 			return
@@ -148,4 +171,5 @@ func main() {
 
 	fmt.Println("Installation complete!")
 }
+
 
