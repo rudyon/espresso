@@ -116,7 +116,7 @@ func main() {
 	}
 
 	packageName := os.Args[2] + ".bean"
-	baseURL := "https://example.com/beans/" // Replace with the actual base URL
+	baseURL := "https://raw.githubusercontent.com/rudyon/espresso/main/beans/" // Replace with the actual base URL
 
 	// Define a function to download a .bean file
 	downloadURL := func(beanName string) string {
