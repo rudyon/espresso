@@ -1,5 +1,5 @@
 #!/bin/bash
-Depends=("ncurses" "libmagic")
+depends=("ncurses" "libmagic")
 echo "Brewing nano..."
 # Ensure /etc/espresso directory exists
 mkdir -p /etc/espresso
