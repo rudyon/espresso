@@ -3,106 +3,51 @@ package main
 import (
     "bufio"
     "fmt"
+    "io"
+    "net/http"
     "os"
     "os/exec"
     "strings"
 )
 
-func readPackages() []string {
-    file, err := os.Open("packages.txt")
+const baseURL = "https://github.com/rudyon/espresso/raw/main/beans/"
+
+func downloadBean(beanFile string) (string, error) {
+    url := baseURL + beanFile
+    response, err := http.Get(url)
     if err != nil {
-        if os.IsNotExist(err) {
-            return []string{}
-        }
-        fmt.Println("Error reading packages file:", err)
-        return nil
+        return "", fmt.Errorf("error downloading .bean file: %v", err)
     }
-    defer file.Close()
+    defer response.Body.Close()
 
-    var packages []string
-    scanner := bufio.NewScanner(file)
-    for scanner.Scan() {
-        packages = append(packages, scanner.Text())
+    if response.StatusCode != http.StatusOK {
+        return "", fmt.Errorf("error: received status code %d", response.StatusCode)
     }
-    if err := scanner.Err(); err != nil {
-        fmt.Println("Error reading file:", err)
-    }
-    return packages
-}
 
-func writePackages(packages []string) {
-    file, err := os.Create("packages.txt")
+    tempFile, err := os.CreateTemp("", "espresso_*.bean")
     if err != nil {
-        fmt.Println("Error creating packages file:", err)
-        return
+        return "", fmt.Errorf("error creating temp file: %v", err)
     }
-    defer file.Close()
+    defer tempFile.Close()
 
-    writer := bufio.NewWriter(file)
-    for _, pkg := range packages {
-        writer.WriteString(pkg + "\n")
-    }
-    writer.Flush()
-}
-
-func install(packageName string) {
-    packages := readPackages()
-    for _, pkg := range packages {
-        if pkg == packageName {
-            fmt.Println("Package already installed:", packageName)
-            return
-        }
+    _, err = io.Copy(tempFile, response.Body)
+    if err != nil {
+        return "", fmt.Errorf("error saving .bean file: %v", err)
     }
 
-    if packageName == "nano" {
-        if err := installFromBean("nano.bean"); err != nil {
-            fmt.Println("Error installing from .bean file:", err)
-            return
-        }
-        packages = append(packages, packageName)
-        writePackages(packages)
-        fmt.Printf("Installing %s...\n", packageName)
-        return
-    }
-
-    fmt.Println("Error: Unknown package or package file not found.")
-}
-
-func remove(packageName string) {
-    packages := readPackages()
-    var newPackages []string
-    found := false
-    for _, pkg := range packages {
-        if pkg != packageName {
-            newPackages = append(newPackages, pkg)
-        } else {
-            found = true
-        }
-    }
-    if !found {
-        fmt.Println("Package not found:", packageName)
-        return
-    }
-    writePackages(newPackages)
-    fmt.Printf("Removing %s...\n", packageName)
-}
-
-func listPackages() {
-    packages := readPackages()
-    if len(packages) == 0 {
-        fmt.Println("No packages installed.")
-        return
-    }
-    fmt.Println("Installed packages:")
-    for _, pkg := range packages {
-        fmt.Println(pkg)
-    }
+    return tempFile.Name(), nil
 }
 
 func installFromBean(beanFile string) error {
-    file, err := os.Open(beanFile)
+    filePath, err := downloadBean(beanFile)
     if err != nil {
-        return fmt.Errorf("error reading .bean file: %v", err)
+        return err
+    }
+    defer os.Remove(filePath)
+
+    file, err := os.Open(filePath)
+    if err != nil {
+        return fmt.Errorf("error opening downloaded .bean file: %v", err)
     }
     defer file.Close()
 
@@ -125,6 +70,28 @@ func installFromBean(beanFile string) error {
         return fmt.Errorf("error reading .bean file: %v", err)
     }
     return nil
+}
+
+func install(packageName string) {
+    // Simulate reading from a list of installed packages
+    if packageName == "nano" {
+        if err := installFromBean("nano.bean"); err != nil {
+            fmt.Println("Error installing from .bean file:", err)
+            return
+        }
+        fmt.Printf("Installing %s...\n", packageName)
+        return
+    }
+
+    fmt.Println("Error: Unknown package or package file not found.")
+}
+
+func remove(packageName string) {
+    fmt.Printf("Removing %s...\n", packageName)
+}
+
+func listPackages() {
+    fmt.Println("Listing installed packages...")
 }
 
 func printUsage() {
