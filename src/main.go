@@ -122,13 +122,4 @@ func main() {
 	}
 
 	for _, dep := range dependencies {
-		fmt.Printf("Checking and installing dependency: %s\n", dep)
-		if err := installFromBean(dep); err != nil {
-			fmt.Printf("error installing dependency %s: %v\n", dep, err)
-			return
-		}
-	}
-
-	fmt.Println("Installation complete!")
-}
 
