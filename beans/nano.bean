@@ -1,22 +1,26 @@
 #!/bin/bash
+# Ensure /etc/espresso directory exists
+mkdir -p /etc/espresso
+cd /etc/espresso || exit
+
+# Download nano source
 wget https://www.nano-editor.org/dist/v8/nano-8.1.tar.xz -O nano.8.1.tar.xz
 if [ $? -ne 0 ]; then
     echo "Error: wget failed"
     exit 1
 fi
 
+# Extract the tarball
 tar -xf nano.8.1.tar.xz
 if [ $? -ne 0 ]; then
     echo "Error: tar failed"
     exit 1
 fi
 
-cd nano-8.1
-if [ $? -ne 0 ]; then
-    echo "Error: cd failed"
-    exit 1
-fi
+# Change directory to nano
+cd nano-8.1 || exit
 
+# Configure and install
 ./configure
 if [ $? -ne 0 ]; then
     echo "Error: configure failed"
