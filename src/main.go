@@ -1,3 +1,4 @@
+
 package main
 
 import (
@@ -9,6 +10,15 @@ import (
 	"path/filepath"
 	"strings"
 )
+
+// Function to execute a shell command
+func executeCommand(cmd string) error {
+	cmdArgs := strings.Split(cmd, " ")
+	command := exec.Command(cmdArgs[0], cmdArgs[1:]...)
+	command.Stdout = os.Stdout
+	command.Stderr = os.Stderr
+	return command.Run()
+}
 
 // Function to install from a .bean file
 func installFromBean(beanPath string) error {
@@ -50,15 +60,6 @@ func installFromBean(beanPath string) error {
 	return executeCommand(cmd)
 }
 
-// Execute a shell command
-func executeCommand(cmd string) error {
-	cmdArgs := strings.Split(cmd, " ")
-	command := exec.Command(cmdArgs[0], cmdArgs[1:]...)
-	command.Stdout = os.Stdout
-	command.Stderr = os.Stderr
-	return command.Run()
-}
-
 // Parse dependencies from a file
 func parseDependencies(filePath string) ([]string, error) {
 	// For example purposes, we'll return hardcoded dependencies
@@ -96,3 +97,4 @@ func main() {
 		fmt.Printf("error installing main package %s: %v\n", mainPackage, err)
 	}
 }
+
