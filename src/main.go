@@ -1,10 +1,12 @@
 package main
 
 import (
+    "bufio"
     "fmt"
     "os"
     "os/exec"
     "path/filepath"
+    "strings"
 )
 
 func ensureEspressoDir() error {
@@ -33,6 +35,32 @@ func downloadBean(beanFile string) (string, error) {
     return output, nil
 }
 
+func parseDependencies(filePath string) ([]string, error) {
+    file, err := os.Open(filePath)
+    if err != nil {
+        return nil, err
+    }
+    defer file.Close()
+
+    var dependencies []string
+    scanner := bufio.NewScanner(file)
+    for scanner.Scan() {
+        line := strings.TrimSpace(scanner.Text())
+        if strings.HasPrefix(line, "Depends=(") {
+            deps := strings.TrimPrefix(line, "Depends=(")
+            deps = strings.TrimSuffix(deps, ")")
+            dependencies = strings.Split(deps, " ")
+            break
+        }
+    }
+
+    if err := scanner.Err(); err != nil {
+        return nil, err
+    }
+
+    return dependencies, nil
+}
+
 func installFromBean(beanFile string) error {
     // Ensure /etc/espresso directory exists
     if err := ensureEspressoDir(); err != nil {
@@ -46,6 +74,19 @@ func installFromBean(beanFile string) error {
     defer os.Remove(filePath)
 
     fmt.Printf("Running the .bean script: %s\n", filePath)
+
+    // Parse dependencies and install them
+    dependencies, err := parseDependencies(filePath)
+    if err != nil {
+        return fmt.Errorf("error parsing dependencies: %v", err)
+    }
+    for _, dep := range dependencies {
+        fmt.Printf("Checking and installing dependency: %s\n", dep)
+        // Recursively install dependencies
+        if err := installFromBean(dep + ".bean"); err != nil {
+            return fmt.Errorf("error installing dependency %s: %v", dep, err)
+        }
+    }
 
     // Execute the .bean script directly
     cmd := exec.Command("bash", filePath)

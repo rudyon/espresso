@@ -1,5 +1,6 @@
 #!/bin/bash
-echo "Brewing nano-8.1..."
+Depends=("ncurses" "libmagic")
+echo "Brewing nano..."
 # Ensure /etc/espresso directory exists
 mkdir -p /etc/espresso
 cd /etc/espresso
@@ -13,5 +14,5 @@ cd nano-8.1
 ./configure
 make
 sudo make install
-echo "Your coffee is ready. ☕"
+echo "Brewed nano. Your coffee is ready. ☕"
 
