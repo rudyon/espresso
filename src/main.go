@@ -50,7 +50,7 @@ func installFromBean(beanPath string) error {
 	}
 
 	// Download the .bean file
-	response, err := http.Get("https://raw.githubusercontent.com/rudyon/espresso/main/beans/" + beanPath + ".bean")
+	response, err := http.Get("https://raw.githubusercontent.com/rudyon/espresso/tree/main/beans/" + beanPath)
 	if err != nil {
 		return fmt.Errorf("error downloading .bean file: %v", err)
 	}
