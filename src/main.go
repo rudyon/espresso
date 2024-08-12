@@ -145,7 +145,7 @@ func main() {
 
 	// Execute the main package commands
 	fmt.Printf("Executing package: %s\n", packageName)
-	// Temporary script file to execute commands
+	// Create a temporary script file to execute commands
 	scriptPath := filepath.Join("/etc/espresso", "temp_script.sh")
 	scriptFile, err := os.Create(scriptPath)
 	if err != nil {
