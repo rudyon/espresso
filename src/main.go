@@ -89,10 +89,8 @@ func parseBeanFile(filePath string) (dependencies []string, commands []string, e
 			parsingDependencies = true
 			line = strings.TrimPrefix(line, "depends=(")
 			line = strings.TrimSuffix(line, ")")
+			line = strings.ReplaceAll(line, `"`, "") // Remove quotes
 			dependencies = strings.Split(line, " ")
-			for i := range dependencies {
-				dependencies[i] = strings.Trim(dependencies[i], `"`)
-			}
 		} else if parsingDependencies && strings.HasSuffix(line, ")") {
 			// End of dependencies
 			parsingDependencies = false
@@ -143,8 +141,6 @@ func main() {
 		}
 	}
 
-	// Execute the main package commands
-	fmt.Printf("Executing package: %s\n", packageName)
 	// Create a temporary script file to execute commands
 	scriptPath := filepath.Join("/etc/espresso", "temp_script.sh")
 	scriptFile, err := os.Create(scriptPath)
