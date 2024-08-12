@@ -19,7 +19,7 @@ func ensureEspressoDir() error {
 }
 
 func downloadBean(beanFile string) (string, error) {
-    url := fmt.Sprintf("https://github.com/rudyon/espresso/blob/main/beans/%s", beanFile)
+    url := fmt.Sprintf("https://raw.githubusercontent.com/rudyon/espresso/main/beans/%s.bean", beanFile)
     output := fmt.Sprintf("/etc/espresso/%s", beanFile)
     cmd := exec.Command("wget", url, "-O", output)
     cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin")
