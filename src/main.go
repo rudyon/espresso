@@ -83,7 +83,7 @@ func installFromBean(beanFile string) error {
     for _, dep := range dependencies {
         fmt.Printf("Checking and installing dependency: %s\n", dep)
         // Recursively install dependencies
-        if err := installFromBean(dep + ".bean"); err != nil {
+		if err := installFromBean(dep + ".bean"); err != nil {
             return fmt.Errorf("error installing dependency %s: %v", dep, err)
         }
     }
