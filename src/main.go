@@ -1,7 +1,7 @@
 package main
 
 import (
-	"errors"
+	"bufio"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,29 +12,12 @@ import (
 )
 
 // Function to execute a shell command
-func executeCommand(cmd string) error {
-	// Split the command and arguments
-	cmdArgs := strings.Fields(cmd)
-	if len(cmdArgs) == 0 {
-		return errors.New("no command provided")
-	}
+func executeCommand(command string, args ...string) error {
+	cmd := exec.Command(command, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
-	// Check if the command is a script and needs special handling
-	if strings.HasSuffix(cmdArgs[0], ".sh") {
-		// Ensure the script has execute permissions
-		if err := os.Chmod(cmdArgs[0], 0755); err != nil {
-			return fmt.Errorf("failed to set execute permissions: %w", err)
-		}
-		// Use /bin/bash to run the script
-		cmdArgs = append([]string{"/bin/bash"}, cmdArgs...)
-	}
-
-	// Create the exec.Command with the arguments
-	command := exec.Command(cmdArgs[0], cmdArgs[1:]...)
-	command.Stdout = os.Stdout
-	command.Stderr = os.Stderr
-
-	err := command.Run()
+	err := cmd.Run()
 	if err != nil {
 		fmt.Printf("Error executing command: %s\n", err)
 	}
@@ -50,11 +33,16 @@ func installFromBean(beanPath string) error {
 	}
 
 	// Download the .bean file
-	response, err := http.Get("https://raw.githubusercontent.com/rudyon/espresso/tree/main/beans/" + beanPath)
+	response, err := http.Get("https://raw.githubusercontent.com/rudyon/espresso/main/beans/" + beanPath)
 	if err != nil {
 		return fmt.Errorf("error downloading .bean file: %v", err)
 	}
 	defer response.Body.Close()
+
+	// Check if the response status is 200 OK
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("error: received status code %d", response.StatusCode)
+	}
 
 	// Write the .bean file to /etc/espresso
 	filePath := filepath.Join("/etc/espresso", beanPath)
@@ -76,16 +64,33 @@ func installFromBean(beanPath string) error {
 	}
 
 	// Execute the .bean file as a shell script
-	cmd := fmt.Sprintf("/bin/bash %s", filePath)
-	fmt.Println("Running command:", cmd)
-	return executeCommand(cmd)
+	return executeCommand("/bin/bash", filePath)
 }
 
-// Parse dependencies from a file
+// Parse dependencies from a .bean file
 func parseDependencies(filePath string) ([]string, error) {
-	// For example purposes, we'll return hardcoded dependencies
-	// Replace this with actual file reading logic
-	return []string{"ncurses.bean", "libmagic.bean"}, nil
+	// Open the .bean file
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("error opening .bean file: %v", err)
+	}
+	defer file.Close()
+
+	// Read dependencies
+	var dependencies []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line != "" {
+			dependencies = append(dependencies, line)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error reading .bean file: %v", err)
+	}
+
+	return dependencies, nil
 }
 
 func main() {
@@ -94,10 +99,23 @@ func main() {
 		return
 	}
 
-	filePath := "dependencies.txt" // Example file path
+	if len(os.Args) < 3 || os.Args[1] != "brew" {
+		fmt.Println("Usage: espresso brew <package>")
+		return
+	}
 
-	// Process dependencies
-	dependencies, err := parseDependencies(filePath)
+	packageName := os.Args[2] + ".bean"
+
+	// Install the main package
+	fmt.Printf("Installing package: %s\n", packageName)
+	if err := installFromBean(packageName); err != nil {
+		fmt.Printf("error installing package %s: %v\n", packageName, err)
+		return
+	}
+
+	// Parse and install dependencies
+	dependenciesFilePath := filepath.Join("/etc/espresso", packageName)
+	dependencies, err := parseDependencies(dependenciesFilePath)
 	if err != nil {
 		fmt.Printf("error parsing dependencies: %v\n", err)
 		return
@@ -111,11 +129,6 @@ func main() {
 		}
 	}
 
-	// Install the main package
-	mainPackage := "nano.bean" // Replace this with the actual package specified by the user
-	fmt.Printf("Installing main package: %s\n", mainPackage)
-	if err := installFromBean(mainPackage); err != nil {
-		fmt.Printf("error installing main package %s: %v\n", mainPackage, err)
-	}
+	fmt.Println("Installation complete!")
 }
 
