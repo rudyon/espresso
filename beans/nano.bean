@@ -11,8 +11,7 @@ tar -xf nano.8.1.tar.xz
 # Change directory to nano
 cd nano-8.1
 # Configure and install
-chmod +x ./configure
-./configure
+/etc/espresso/nano-8.1/configure
 make
 sudo make install
 echo "Brewed nano. Your coffee is ready. ☕"
