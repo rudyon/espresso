@@ -1,11 +1,37 @@
 #!/bin/bash
-# Download nano source
-wget https://www.nano-editor.org/dist/v8/nano-8.1.tar.xz
-# Extract the tarball
+wget https://www.nano-editor.org/dist/v8/nano-8.1.tar.xz -O nano.8.1.tar.xz
+if [ $? -ne 0 ]; then
+    echo "Error: wget failed"
+    exit 1
+fi
+
 tar -xf nano.8.1.tar.xz
-# Change directory to nano
+if [ $? -ne 0 ]; then
+    echo "Error: tar failed"
+    exit 1
+fi
+
 cd nano-8.1
-# Configure and install
+if [ $? -ne 0 ]; then
+    echo "Error: cd failed"
+    exit 1
+fi
+
 ./configure
+if [ $? -ne 0 ]; then
+    echo "Error: configure failed"
+    exit 1
+fi
+
 make
-make install
+if [ $? -ne 0 ]; then
+    echo "Error: make failed"
+    exit 1
+fi
+
+sudo make install
+if [ $? -ne 0 ]; then
+    echo "Error: make install failed"
+    exit 1
+fi
+
