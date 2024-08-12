@@ -13,8 +13,8 @@ import (
 )
 
 // Function to execute a shell command
-func executeCommand(command string, args ...string) error {
-	cmd := exec.Command(command, args...)
+func executeCommand(command string) error {
+	cmd := exec.Command("/bin/bash", command)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -123,7 +123,8 @@ func main() {
 		return baseURL + beanName
 	}
 
-	// Parse dependencies from the main package file
+	// Download all .bean files (dependencies and the main package)
+	fmt.Println("Downloading dependencies and package...")
 	dependenciesFilePath := filepath.Join("/etc/espresso", packageName)
 	dependencies, err := parseDependencies(dependenciesFilePath)
 	if err != nil {
@@ -132,7 +133,6 @@ func main() {
 	}
 
 	// Download all .bean files (dependencies and the main package)
-	fmt.Println("Downloading dependencies...")
 	for _, dep := range dependencies {
 		if err := downloadBean(dep, downloadURL(dep)); err != nil {
 			fmt.Printf("error downloading dependency %s: %v\n", dep, err)
@@ -149,20 +149,31 @@ func main() {
 	// Install each .bean file
 	fmt.Println("Installing packages...")
 	for _, dep := range dependencies {
-		fmt.Printf("Installing dependency: %s\n", dep)
-		if err := executeCommand("/etc/espresso/" + dep); err != nil {
-			fmt.Printf("error installing dependency %s: %v\n", dep, err)
+		depFilePath := filepath.Join("/etc/espresso", dep)
+		if _, err := os.Stat(depFilePath); err == nil {
+			fmt.Printf("Installing dependency: %s\n", dep)
+			if err := executeCommand(depFilePath); err != nil {
+				fmt.Printf("error installing dependency %s: %v\n", dep, err)
+				return
+			}
+		} else {
+			fmt.Printf("error: dependency file %s does not exist\n", depFilePath)
 			return
 		}
 	}
 
 	// Install the main package
-	fmt.Printf("Installing package: %s\n", packageName)
-	if err := executeCommand("/etc/espresso/" + packageName); err != nil {
-		fmt.Printf("error installing package %s: %v\n", packageName, err)
+	mainPackagePath := filepath.Join("/etc/espresso", packageName)
+	if _, err := os.Stat(mainPackagePath); err == nil {
+		fmt.Printf("Installing package: %s\n", packageName)
+		if err := executeCommand(mainPackagePath); err != nil {
+			fmt.Printf("error installing package %s: %v\n", packageName, err)
+			return
+		}
+	} else {
+		fmt.Printf("error: main package file %s does not exist\n", mainPackagePath)
 		return
 	}
 
 	fmt.Println("Installation complete!")
 }
-
