@@ -6,7 +6,7 @@ cd /etc/espresso
 # Download nano source
 wget https://invisible-island.net/datafiles/release/ncurses.tar.gz
 # Extract the tarball
-tar -xzf ncurses.tar.xz
+tar -xzf ncurses.tar.gz.3
 # Change directory to nano
 cd ncurses
 # Configure and install

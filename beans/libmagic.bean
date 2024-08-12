@@ -6,7 +6,7 @@ cd /etc/espresso
 # Download nano source
 wget ftp://ftp.astron.com:21/pub/file/file-5.45.tar.gz
 # Extract the tarball
-tar -xzf file-5.45.tar.gz
+tar -xzf file-5.45.tar.gz.3
 # Change directory to nano
 cd file-5.45
 # Configure and install
