@@ -14,11 +14,27 @@ import (
 func executeCommand(cmd string) error {
 	// Split the command and arguments
 	cmdArgs := strings.Fields(cmd)
+	if len(cmdArgs) == 0 {
+		return errors.New("no command provided")
+	}
+
+	// If the command is a script, ensure it has execute permissions
+	if strings.HasSuffix(cmdArgs[0], ".sh") {
+		if err := os.Chmod(cmdArgs[0], 0755); err != nil {
+			return fmt.Errorf("failed to set execute permissions: %w", err)
+		}
+	}
+
 	// Create the exec.Command with the split arguments
 	command := exec.Command(cmdArgs[0], cmdArgs[1:]...)
 	command.Stdout = os.Stdout
 	command.Stderr = os.Stderr
-	return command.Run()
+
+	err := command.Run()
+	if err != nil {
+		fmt.Printf("Error executing command: %s\n", err)
+	}
+	return err
 }
 
 // Function to install from a .bean file
