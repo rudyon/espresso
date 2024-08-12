@@ -1,4 +1,4 @@
-# nano.bean
+#!/bin/bash
 wget https://nano-editor.org/dist/v6/nano-6.2.tar.xz
 tar -xf nano-6.2.tar.xz
 cd nano-6.2
