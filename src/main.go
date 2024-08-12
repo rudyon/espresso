@@ -52,22 +52,37 @@ func installFromBean(beanFile string) error {
     defer file.Close()
 
     scanner := bufio.NewScanner(file)
+    var commands []string
+
+    // Skip the shebang line
+    firstLine := true
+
     for scanner.Scan() {
         line := strings.TrimSpace(scanner.Text())
-        if line == "" {
+        // Skip empty lines and comments
+        if line == "" || strings.HasPrefix(line, "#") {
             continue
         }
-        fmt.Printf("Running command: %s\n", line)
-        cmdParts := strings.Split(line, " ")
-        cmd := exec.Command(cmdParts[0], cmdParts[1:]...)
-        output, err := cmd.CombinedOutput()
-        if err != nil {
-            return fmt.Errorf("error executing command '%s': %v\nOutput: %s", line, err, output)
+        if firstLine {
+            // Skip shebang line
+            firstLine = false
+            continue
         }
-        fmt.Printf("Output:\n%s\n", output)
+        commands = append(commands, line)
     }
     if err := scanner.Err(); err != nil {
         return fmt.Errorf("error reading .bean file: %v", err)
+    }
+
+    for _, cmdStr := range commands {
+        fmt.Printf("Running command: %s\n", cmdStr)
+        cmdParts := strings.Split(cmdStr, " ")
+        cmd := exec.Command(cmdParts[0], cmdParts[1:]...)
+        output, err := cmd.CombinedOutput()
+        if err != nil {
+            return fmt.Errorf("error executing command '%s': %v\nOutput: %s", cmdStr, err, output)
+        }
+        fmt.Printf("Output:\n%s\n", output)
     }
     return nil
 }
