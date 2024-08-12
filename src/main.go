@@ -3,6 +3,8 @@ package main
 import (
     "bufio"
     "fmt"
+    "io"
+    "net/http"
     "os"
     "os/exec"
     "strings"
@@ -21,30 +23,40 @@ func ensureEspressoDir() error {
     return nil
 }
 
-func install(packageName string) {
-    if packageName != "" {
-        fmt.Printf("Installing %s...\n", packageName)
-    } else {
-        fmt.Println("Error: No package specified for installation.")
+// Function to check if running as root
+func checkRoot() {
+    if os.Geteuid() != 0 {
+        fmt.Println("Error: This program must be run as root. Please use sudo.")
+        os.Exit(1)
     }
 }
 
-func remove(packageName string) {
-    if packageName != "" {
-        fmt.Printf("Removing %s...\n", packageName)
-    } else {
-        fmt.Println("Error: No package specified for removal.")
-    }
-}
-
-func listPackages() {
-    fmt.Println("Listing installed packages...")
-}
-
-// Download the .bean file and return the file path
+// Download the .bean file from GitHub and return the file path
 func downloadBean(beanFile string) (string, error) {
-    // Implement the download logic
-    return "/path/to/beanfile", nil
+    url := fmt.Sprintf("https://github.com/rudyon/espresso/raw/main/beans/%s.bean", beanFile)
+    response, err := http.Get(url)
+    if err != nil {
+        return "", fmt.Errorf("error downloading .bean file: %v", err)
+    }
+    defer response.Body.Close()
+
+    if response.StatusCode != http.StatusOK {
+        return "", fmt.Errorf("error: received non-200 response status code %d", response.StatusCode)
+    }
+
+    filePath := "/etc/espresso/" + beanFile + ".bean"
+    outFile, err := os.Create(filePath)
+    if err != nil {
+        return "", fmt.Errorf("error creating file %s: %v", filePath, err)
+    }
+    defer outFile.Close()
+
+    _, err = io.Copy(outFile, response.Body)
+    if err != nil {
+        return "", fmt.Errorf("error saving .bean file: %v", err)
+    }
+
+    return filePath, nil
 }
 
 // Install from a .bean file
@@ -102,6 +114,29 @@ func installFromBean(beanFile string) error {
     return nil
 }
 
+func install(packageName string) {
+    if packageName != "" {
+        fmt.Printf("Installing %s...\n", packageName)
+        if err := installFromBean(packageName); err != nil {
+            fmt.Printf("Installation failed: %v\n", err)
+        }
+    } else {
+        fmt.Println("Error: No package specified for installation.")
+    }
+}
+
+func remove(packageName string) {
+    if packageName != "" {
+        fmt.Printf("Removing %s...\n", packageName)
+    } else {
+        fmt.Println("Error: No package specified for removal.")
+    }
+}
+
+func listPackages() {
+    fmt.Println("Listing installed packages...")
+}
+
 func printUsage() {
     fmt.Println("Usage:")
     fmt.Println("  espresso brew <package>   - Install a package")
@@ -110,6 +145,9 @@ func printUsage() {
 }
 
 func main() {
+    // Check if the program is run as root
+    checkRoot()
+
     if len(os.Args) < 2 {
         fmt.Println("Error: Command not specified.")
         printUsage()
