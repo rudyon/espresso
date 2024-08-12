@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -63,52 +64,85 @@ func installFromBean(beanPath string) error {
 		return fmt.Errorf("error setting file permissions: %v", err)
 	}
 
-	// Execute the .bean file as a shell script
-	return executeCommand("/bin/bash", filePath)
+	// Read and process the .bean file
+	return processBeanFile(filePath)
 }
 
-// Parse dependencies and commands from a .bean file
-func parseBeanFile(filePath string) (dependencies []string, commands []string, err error) {
-	// Open the .bean file
-	file, err := os.Open(filePath)
+// Function to process the .bean file
+func processBeanFile(beanFilePath string) error {
+	file, err := os.Open(beanFilePath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error opening .bean file: %v", err)
+		return fmt.Errorf("error opening .bean file: %v", err)
 	}
 	defer file.Close()
 
-	// Read the .bean file
-	var parsingDependencies bool
+	var dependencies []string
+	var commands []string
+
 	scanner := bufio.NewScanner(file)
+	inCommandsSection := false
+
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
+
 		if line == "" {
 			continue
 		}
-		if strings.HasPrefix(line, "depends=(") {
-			// Extract dependencies
-			parsingDependencies = true
-			line = strings.TrimPrefix(line, "depends=(")
-			line = strings.TrimSuffix(line, ")")
-			line = strings.ReplaceAll(line, `"`, "") // Remove quotes
-			dependencies = strings.Split(line, " ")
-		} else if parsingDependencies && strings.HasSuffix(line, ")") {
-			// End of dependencies
-			parsingDependencies = false
-		} else if parsingDependencies {
-			// Continue reading dependencies
-			line = strings.Trim(line, `"`)
-			dependencies = append(dependencies, line)
-		} else {
-			// Collect commands
-			commands = append(commands, line)
+
+		// Check for dependencies section
+		if strings.HasPrefix(line, "depends:") {
+			inCommandsSection = false
+			depLines := strings.Split(line[len("depends:"):], " ")
+			for _, dep := range depLines {
+				dependencies = append(dependencies, dep+".bean")
+			}
 		}
+
+		// Check for commands section
+		if strings.HasPrefix(line, "#") {
+			// Skip comment lines
+			continue
+		}
+
+		if strings.HasPrefix(line, "echo ") {
+			// Skip echo lines
+			continue
+		}
+
+		if !inCommandsSection {
+			if strings.HasPrefix(line, "#") {
+				inCommandsSection = true
+			}
+			continue
+		}
+
+		// Collect commands
+		commands = append(commands, line)
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, nil, fmt.Errorf("error reading .bean file: %v", err)
+		return fmt.Errorf("error reading .bean file: %v", err)
 	}
 
-	return dependencies, commands, nil
+	// Install dependencies
+	for _, dep := range dependencies {
+		fmt.Printf("Installing dependency: %s\n", dep)
+		if err := installFromBean(dep); err != nil {
+			fmt.Printf("error installing dependency %s: %v\n", dep, err)
+			return err
+		}
+	}
+
+	// Execute commands
+	for _, command := range commands {
+		fmt.Printf("Executing command: %s\n", command)
+		if err := executeCommand("/bin/bash", "-c", command); err != nil {
+			fmt.Printf("error executing command %s: %v\n", command, err)
+			return err
+		}
+	}
+
+	return nil
 }
 
 func main() {
@@ -124,46 +158,10 @@ func main() {
 
 	packageName := os.Args[2] + ".bean"
 
-	// Parse dependencies and commands from the main package file
-	dependenciesFilePath := filepath.Join("/etc/espresso", packageName)
-	dependencies, commands, err := parseBeanFile(dependenciesFilePath)
-	if err != nil {
-		fmt.Printf("error parsing .bean file: %v\n", err)
-		return
-	}
-
-	// Install each dependency
-	for _, dep := range dependencies {
-		fmt.Printf("Checking and installing dependency: %s\n", dep)
-		if err := installFromBean(dep + ".bean"); err != nil {
-			fmt.Printf("error installing dependency %s: %v\n", dep, err)
-			return
-		}
-	}
-
-	// Create a temporary script file to execute commands
-	scriptPath := filepath.Join("/etc/espresso", "temp_script.sh")
-	scriptFile, err := os.Create(scriptPath)
-	if err != nil {
-		fmt.Printf("error creating script file: %v\n", err)
-		return
-	}
-	defer scriptFile.Close()
-
-	for _, command := range commands {
-		if _, err := scriptFile.WriteString(command + "\n"); err != nil {
-			fmt.Printf("error writing command to script: %v\n", err)
-			return
-		}
-	}
-
-	if err := os.Chmod(scriptPath, 0755); err != nil {
-		fmt.Printf("error setting script file permissions: %v\n", err)
-		return
-	}
-
-	if err := executeCommand("/bin/bash", scriptPath); err != nil {
-		fmt.Printf("error executing script: %v\n", err)
+	// Install the main package
+	fmt.Printf("Installing package: %s\n", packageName)
+	if err := installFromBean(packageName); err != nil {
+		fmt.Printf("error installing package %s: %v\n", packageName, err)
 		return
 	}
 
