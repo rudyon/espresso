@@ -125,6 +125,7 @@ func main() {
 
 	// Download all .bean files (dependencies and the main package)
 	fmt.Println("Downloading dependencies and package...")
+
 	dependenciesFilePath := filepath.Join("/etc/espresso", packageName)
 	dependencies, err := parseDependencies(dependenciesFilePath)
 	if err != nil {
@@ -134,6 +135,7 @@ func main() {
 
 	// Download all .bean files (dependencies and the main package)
 	for _, dep := range dependencies {
+		fmt.Printf("Downloading %s...\n", dep)
 		if err := downloadBean(dep, downloadURL(dep)); err != nil {
 			fmt.Printf("error downloading dependency %s: %v\n", dep, err)
 			return
@@ -141,6 +143,7 @@ func main() {
 	}
 
 	// Download the main package file
+	fmt.Printf("Downloading %s...\n", packageName)
 	if err := downloadBean(packageName, downloadURL(packageName)); err != nil {
 		fmt.Printf("error downloading package %s: %v\n", packageName, err)
 		return
@@ -177,3 +180,4 @@ func main() {
 
 	fmt.Println("Installation complete!")
 }
+
