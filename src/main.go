@@ -106,13 +106,6 @@ func main() {
 
 	packageName := os.Args[2] + ".bean"
 
-	// Install the main package
-	fmt.Printf("Installing package: %s\n", packageName)
-	if err := installFromBean(packageName); err != nil {
-		fmt.Printf("error installing package %s: %v\n", packageName, err)
-		return
-	}
-
 	// Parse dependencies from the main package file
 	dependenciesFilePath := filepath.Join("/etc/espresso", packageName)
 	dependencies, err := parseDependencies(dependenciesFilePath)
@@ -128,6 +121,13 @@ func main() {
 			fmt.Printf("error installing dependency %s: %v\n", dep, err)
 			return
 		}
+	}
+
+	// Install the main package
+	fmt.Printf("Installing package: %s\n", packageName)
+	if err := installFromBean(packageName); err != nil {
+		fmt.Printf("error installing package %s: %v\n", packageName, err)
+		return
 	}
 
 	fmt.Println("Installation complete!")
