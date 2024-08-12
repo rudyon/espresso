@@ -25,8 +25,8 @@ func executeCommand(command string, args ...string) error {
 	return err
 }
 
-// Function to install from a .bean file given its URL
-func installFromBean(beanName, url string) error {
+// Function to download a .bean file given its URL
+func downloadBean(beanName, url string) error {
 	// Ensure the /etc/espresso directory exists
 	err := os.MkdirAll("/etc/espresso", 0755)
 	if err != nil {
@@ -67,7 +67,6 @@ func installFromBean(beanName, url string) error {
 	return nil
 }
 
-
 // Parse dependencies from a .bean file
 func parseDependencies(filePath string) ([]string, error) {
 	// Open the .bean file
@@ -79,7 +78,7 @@ func parseDependencies(filePath string) ([]string, error) {
 
 	// Define regex pattern for dependencies line
 	dependsPattern := regexp.MustCompile(`^depends=\(([^)]+)\)`)
-	
+
 	// Read dependencies
 	var dependencies []string
 	scanner := bufio.NewScanner(file)
@@ -92,7 +91,7 @@ func parseDependencies(filePath string) ([]string, error) {
 				deps := strings.Fields(matches[1])
 				for _, dep := range deps {
 					dependency := strings.Trim(dep, `"`)
-					dependencies = append(dependencies, dependency + ".bean")
+					dependencies = append(dependencies, dependency+".bean")
 				}
 			}
 		}
@@ -119,6 +118,11 @@ func main() {
 	packageName := os.Args[2] + ".bean"
 	baseURL := "https://example.com/beans/" // Replace with the actual base URL
 
+	// Define a function to download a .bean file
+	downloadURL := func(beanName string) string {
+		return baseURL + beanName
+	}
+
 	// Parse dependencies from the main package file
 	dependenciesFilePath := filepath.Join("/etc/espresso", packageName)
 	dependencies, err := parseDependencies(dependenciesFilePath)
@@ -127,24 +131,17 @@ func main() {
 		return
 	}
 
-	// Define a function to download a .bean file
-	downloadBean := func(beanName string) error {
-		url := baseURL + beanName
-		fmt.Printf("Downloading %s...\n", beanName)
-		return installFromBean(beanName, url)
-	}
-
 	// Download all .bean files (dependencies and the main package)
-	// Ensure main package is downloaded last
+	fmt.Println("Downloading dependencies...")
 	for _, dep := range dependencies {
-		if err := downloadBean(dep); err != nil {
+		if err := downloadBean(dep, downloadURL(dep)); err != nil {
 			fmt.Printf("error downloading dependency %s: %v\n", dep, err)
 			return
 		}
 	}
 
 	// Download the main package file
-	if err := downloadBean(packageName); err != nil {
+	if err := downloadBean(packageName, downloadURL(packageName)); err != nil {
 		fmt.Printf("error downloading package %s: %v\n", packageName, err)
 		return
 	}
@@ -153,7 +150,7 @@ func main() {
 	fmt.Println("Installing packages...")
 	for _, dep := range dependencies {
 		fmt.Printf("Installing dependency: %s\n", dep)
-		if err := installFromBean(dep, baseURL+dep); err != nil {
+		if err := executeCommand("/etc/espresso/" + dep); err != nil {
 			fmt.Printf("error installing dependency %s: %v\n", dep, err)
 			return
 		}
@@ -161,11 +158,10 @@ func main() {
 
 	// Install the main package
 	fmt.Printf("Installing package: %s\n", packageName)
-	if err := installFromBean(packageName, baseURL+packageName); err != nil {
+	if err := executeCommand("/etc/espresso/" + packageName); err != nil {
 		fmt.Printf("error installing package %s: %v\n", packageName, err)
 		return
 	}
 
 	fmt.Println("Installation complete!")
 }
-
