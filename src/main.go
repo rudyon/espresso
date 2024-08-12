@@ -24,6 +24,8 @@ func executeCommand(cmd string) error {
 		if err := os.Chmod(cmdArgs[0], 0755); err != nil {
 			return fmt.Errorf("failed to set execute permissions: %w", err)
 		}
+		// Execute the script directly using /bin/bash
+		cmdArgs = append([]string{"/bin/bash"}, cmdArgs...)
 	}
 
 	// Create the exec.Command with the split arguments
