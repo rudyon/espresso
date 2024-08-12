@@ -1,11 +1,10 @@
 package main
 
 import (
-    "bufio"
     "fmt"
     "os"
     "os/exec"
-    "strings"
+    "path/filepath"
 )
 
 func ensureEspressoDir() error {
@@ -19,13 +18,12 @@ func ensureEspressoDir() error {
 }
 
 func downloadBean(beanFile string) (string, error) {
-    url := fmt.Sprintf("https://raw.githubusercontent.com/rudyon/espresso/main/beans/%s.bean", beanFile)
-    output := fmt.Sprintf("/etc/espresso/%s", beanFile)
+    url := fmt.Sprintf("https://raw.githubusercontent.com/rudyon/espresso/main/beans/%s", beanFile)
+    output := filepath.Join("/etc/espresso", beanFile)
 
     fmt.Printf("Downloading %s from %s\n", beanFile, url)
 
     cmd := exec.Command("wget", url, "-O", output)
-    cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin")
     outputBytes, err := cmd.CombinedOutput()
     if err != nil {
         return "", fmt.Errorf("error downloading .bean file: %v\nOutput: %s", err, outputBytes)
@@ -47,51 +45,18 @@ func installFromBean(beanFile string) error {
     }
     defer os.Remove(filePath)
 
-    fmt.Printf("Downloaded .bean file to: %s\n", filePath)
+    fmt.Printf("Running the .bean script: %s\n", filePath)
 
-    file, err := os.Open(filePath)
+    // Execute the .bean script directly
+    cmd := exec.Command("bash", filePath)
+    cmd.Dir = "/etc/espresso"
+    cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
+    err = cmd.Run()
     if err != nil {
-        return fmt.Errorf("error opening downloaded .bean file: %v", err)
-    }
-    defer file.Close()
-
-    scanner := bufio.NewScanner(file)
-    var commands []string
-
-    // Skip the shebang line
-    firstLine := true
-
-    for scanner.Scan() {
-        line := strings.TrimSpace(scanner.Text())
-        // Skip empty lines and comments
-        if line == "" || strings.HasPrefix(line, "#") {
-            continue
-        }
-        if firstLine {
-            // Skip shebang line
-            firstLine = false
-            continue
-        }
-        commands = append(commands, line)
-    }
-    if err := scanner.Err(); err != nil {
-        return fmt.Errorf("error reading .bean file: %v", err)
+        return fmt.Errorf("error executing .bean file: %v", err)
     }
 
-    for _, cmdStr := range commands {
-        fmt.Printf("Running command: %s\n", cmdStr)
-        // Run the command using a shell
-        cmd := exec.Command("bash", "-c", cmdStr)
-        cmd.Dir = "/etc/espresso" // Ensure commands are run in the correct directory
-        cmd.Env = append(os.Environ(), "PATH=/usr/local/bin:/usr/bin:/bin") // Ensure PATH is set
-        output, err := cmd.CombinedOutput()
-        if err != nil {
-            fmt.Printf("Error executing command '%s': %v\n", cmdStr, err)
-            fmt.Printf("Output: %s\n", output)
-            return fmt.Errorf("error executing command '%s': %v\nOutput: %s", cmdStr, err, output)
-        }
-        fmt.Printf("Output:\n%s\n", output)
-    }
     return nil
 }
 
