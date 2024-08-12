@@ -37,5 +37,20 @@ make || { echo "Error building ncurses"; exit 1; }
 echo "Installing ncurses..."
 make install || { echo "Error installing ncurses"; exit 1; }
 
+# Verify ncurses installation
+if [ ! -f /usr/local/include/curses.h ]; then
+    echo "Error: ncurses installation did not complete successfully. Header file 'curses.h' is missing."
+    exit 1
+fi
+
 echo "Brewed ncurses-dev. Your coffee is ready. ☕"
+
+# Reconfigure and build nano
+cd /etc/espresso/nano-8.1 || { echo "Error changing directory to nano-8.1"; exit 1; }
+echo "Reconfiguring and building nano with ncurses-dev..."
+CFLAGS="-I/usr/local/include" LDFLAGS="-L/usr/local/lib" ./configure --prefix=/usr/local || { echo "Error configuring nano"; exit 1; }
+make || { echo "Error building nano"; exit 1; }
+make install || { echo "Error installing nano"; exit 1; }
+
+echo "Installation complete!"
 
