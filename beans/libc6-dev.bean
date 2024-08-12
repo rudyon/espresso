@@ -1,0 +1,33 @@
+#!/bin/bash
+depends=("build-essential")  # Install basic build tools if not already installed
+
+echo "Brewing glibc..."
+# Ensure /etc/espresso directory exists
+mkdir -p /etc/espresso
+cd /etc/espresso
+
+# Define version and download URL for glibc
+GLIBC_VERSION="2.37"
+GLIBC_TAR="glibc-${GLIBC_VERSION}.tar.gz"
+GLIBC_URL="https://ftp.gnu.org/gnu/libc/${GLIBC_TAR}"
+
+# Download glibc source code
+wget $GLIBC_URL -O glibc.${GLIBC_TAR}
+
+# Extract the tarball
+tar -xf glibc.${GLIBC_TAR}
+
+# Change directory to glibc
+cd glibc-${GLIBC_VERSION}
+
+# Create a build directory and change to it
+mkdir build
+cd build
+
+# Configure and install glibc
+../configure --prefix=/usr/local
+make
+sudo make install
+
+echo "Brewed glibc. Your coffee is ready. ☕"
+

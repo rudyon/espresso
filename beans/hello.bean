@@ -1,0 +1,29 @@
+#!/bin/bash
+depends=("libc6-dev")  # Adjust dependencies if needed
+
+echo "Brewing hello..."
+# Ensure /etc/espresso directory exists
+mkdir -p /etc/espresso
+cd /etc/espresso
+
+# Define version and download URL for hello
+HELLO_VERSION="2.10"
+HELLO_TAR="hello-${HELLO_VERSION}.tar.gz"
+HELLO_URL="https://ftp.gnu.org/gnu/hello/${HELLO_TAR}"
+
+# Download hello source code
+wget $HELLO_URL -O hello.${HELLO_TAR}
+
+# Extract the tarball
+tar -xf hello.${HELLO_TAR}
+
+# Change directory to hello
+cd hello-${HELLO_VERSION}
+
+# Configure and install hello
+./configure --prefix=/usr/local
+make
+sudo make install
+
+echo "Brewed hello. Your coffee is ready. ☕"
+

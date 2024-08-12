@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# Install GCC
+echo "Installing GCC..."
+wget https://ftp.gnu.org/gnu/gcc/gcc-11.3.0/gcc-11.3.0.tar.gz
+tar -xzf gcc-11.3.0.tar.gz
+cd gcc-11.3.0
+sudo apt-get install -y libgmp-dev libmpfr-dev libmpc-dev
+mkdir build
+cd build
+../configure --enable-languages=c,c++ --disable-multilib
+make
+sudo make install
+cd ..
+
+# Install Make
+echo "Installing Make..."
+wget https://ftp.gnu.org/gnu/make/make-4.3.tar.gz
+tar -xzf make-4.3.tar.gz
+cd make-4.3
+./configure
+make
+sudo make install
+cd ..
+
+# Install dpkg-dev
+echo "Installing dpkg-dev..."
+wget https://mirrors.kernel.org/debian/pool/main/d/dpkg/dpkg_1.20.12.tar.xz
+tar -xJf dpkg_1.20.12.tar.xz
+cd dpkg-1.20.12
+./configure
+make
+sudo make install
+
+echo "Build-essential components have been installed manually. Your build environment is ready. ☕"
+
