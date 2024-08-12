@@ -3,42 +3,57 @@ package main
 import (
     "bufio"
     "fmt"
-    "io"
-    "net/http"
     "os"
     "os/exec"
     "strings"
 )
 
-const baseURL = "https://github.com/rudyon/espresso/raw/main/beans/"
-
-func downloadBean(beanFile string) (string, error) {
-    url := baseURL + beanFile
-    response, err := http.Get(url)
-    if err != nil {
-        return "", fmt.Errorf("error downloading .bean file: %v", err)
+// Function to ensure /etc/espresso directory exists
+func ensureEspressoDir() error {
+    dir := "/etc/espresso"
+    if _, err := os.Stat(dir); os.IsNotExist(err) {
+        fmt.Printf("Directory %s does not exist. Creating...\n", dir)
+        err := os.MkdirAll(dir, 0755) // Create directory with 0755 permissions
+        if err != nil {
+            return fmt.Errorf("error creating directory %s: %v", dir, err)
+        }
     }
-    defer response.Body.Close()
-
-    if response.StatusCode != http.StatusOK {
-        return "", fmt.Errorf("error: received status code %d", response.StatusCode)
-    }
-
-    tempFile, err := os.CreateTemp("", "espresso_*.bean")
-    if err != nil {
-        return "", fmt.Errorf("error creating temp file: %v", err)
-    }
-    defer tempFile.Close()
-
-    _, err = io.Copy(tempFile, response.Body)
-    if err != nil {
-        return "", fmt.Errorf("error saving .bean file: %v", err)
-    }
-
-    return tempFile.Name(), nil
+    return nil
 }
 
+func install(packageName string) {
+    if packageName != "" {
+        fmt.Printf("Installing %s...\n", packageName)
+    } else {
+        fmt.Println("Error: No package specified for installation.")
+    }
+}
+
+func remove(packageName string) {
+    if packageName != "" {
+        fmt.Printf("Removing %s...\n", packageName)
+    } else {
+        fmt.Println("Error: No package specified for removal.")
+    }
+}
+
+func listPackages() {
+    fmt.Println("Listing installed packages...")
+}
+
+// Download the .bean file and return the file path
+func downloadBean(beanFile string) (string, error) {
+    // Implement the download logic
+    return "/path/to/beanfile", nil
+}
+
+// Install from a .bean file
 func installFromBean(beanFile string) error {
+    // Ensure /etc/espresso directory exists
+    if err := ensureEspressoDir(); err != nil {
+        return err
+    }
+
     filePath, err := downloadBean(beanFile)
     if err != nil {
         return err
@@ -85,28 +100,6 @@ func installFromBean(beanFile string) error {
         fmt.Printf("Output:\n%s\n", output)
     }
     return nil
-}
-
-func install(packageName string) {
-    // Simulate reading from a list of installed packages
-    if packageName == "nano" {
-        if err := installFromBean("nano.bean"); err != nil {
-            fmt.Println("Error installing from .bean file:", err)
-            return
-        }
-        fmt.Printf("Installing %s...\n", packageName)
-        return
-    }
-
-    fmt.Println("Error: Unknown package or package file not found.")
-}
-
-func remove(packageName string) {
-    fmt.Printf("Removing %s...\n", packageName)
-}
-
-func listPackages() {
-    fmt.Println("Listing installed packages...")
 }
 
 func printUsage() {
