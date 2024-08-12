@@ -1,4 +1,3 @@
-
 package main
 
 import (
@@ -13,7 +12,9 @@ import (
 
 // Function to execute a shell command
 func executeCommand(cmd string) error {
-	cmdArgs := strings.Split(cmd, " ")
+	// Split the command and arguments
+	cmdArgs := strings.Fields(cmd)
+	// Create the exec.Command with the split arguments
 	command := exec.Command(cmdArgs[0], cmdArgs[1:]...)
 	command.Stdout = os.Stdout
 	command.Stderr = os.Stderr
