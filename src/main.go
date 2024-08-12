@@ -33,8 +33,12 @@ func installFromBean(beanPath string) error {
 		return fmt.Errorf("error creating directory: %v", err)
 	}
 
+	// Build the URL to download the .bean file
+	url := "https://raw.githubusercontent.com/rudyon/espresso/main/beans/" + beanPath
+	fmt.Printf("Downloading .bean file from URL: %s\n", url)
+
 	// Download the .bean file
-	response, err := http.Get("https://raw.githubusercontent.com/rudyon/espresso/main/beans/" + beanPath)
+	response, err := http.Get(url)
 	if err != nil {
 		return fmt.Errorf("error downloading .bean file: %v", err)
 	}
@@ -79,7 +83,7 @@ func parseDependencies(filePath string) ([]string, error) {
 
 	// Define regex pattern for dependencies line
 	dependsPattern := regexp.MustCompile(`^depends\=("([^"]+)")*`)
-	
+
 	// Read dependencies
 	var dependencies []string
 	scanner := bufio.NewScanner(file)
@@ -142,3 +146,4 @@ func main() {
 
 	fmt.Println("Installation complete!")
 }
+
