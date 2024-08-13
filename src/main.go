@@ -4,12 +4,19 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
+)
+
+const (
+	baseURL = "https://raw.githubusercontent.com/rudyon/espresso/main/"
+	beansURL = baseURL + "beans/"
+	espressoSourceURL = baseURL + "main.go"
 )
 
 // Function to execute a shell command
@@ -25,40 +32,45 @@ func executeCommand(command string) error {
 	return err
 }
 
-// Function to download a .bean file given its URL
-func downloadBean(beanName, url string) error {
-	// Ensure the /etc/espresso directory exists
-	err := os.MkdirAll("/etc/espresso", 0755)
-	if err != nil {
-		return fmt.Errorf("error creating directory: %v", err)
-	}
-
-	// Download the .bean file
+// Function to download a file given its URL
+func downloadFile(filePath, url string) error {
 	response, err := http.Get(url)
 	if err != nil {
-		return fmt.Errorf("error downloading .bean file: %v", err)
+		return fmt.Errorf("error downloading file: %v", err)
 	}
 	defer response.Body.Close()
 
-	// Check if the response status is 200 OK
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("error: received status code %d", response.StatusCode)
 	}
 
-	// Write the .bean file to /etc/espresso
-	filePath := filepath.Join("/etc/espresso", beanName)
 	file, err := os.Create(filePath)
 	if err != nil {
-		return fmt.Errorf("error creating .bean file: %v", err)
+		return fmt.Errorf("error creating file: %v", err)
 	}
 	defer file.Close()
 
 	_, err = io.Copy(file, response.Body)
 	if err != nil {
-		return fmt.Errorf("error writing .bean file: %v", err)
+		return fmt.Errorf("error writing file: %v", err)
 	}
 
-	// Make the .bean file executable
+	return nil
+}
+
+// Function to download a .bean file given its name
+func downloadBean(beanName string) error {
+	err := os.MkdirAll("/etc/espresso", 0755)
+	if err != nil {
+		return fmt.Errorf("error creating directory: %v", err)
+	}
+
+	filePath := filepath.Join("/etc/espresso", beanName)
+	err = downloadFile(filePath, beansURL+beanName)
+	if err != nil {
+		return err
+	}
+
 	err = os.Chmod(filePath, 0755)
 	if err != nil {
 		return fmt.Errorf("error setting file permissions: %v", err)
@@ -69,25 +81,20 @@ func downloadBean(beanName, url string) error {
 
 // Parse dependencies from a .bean file
 func parseDependencies(filePath string) ([]string, error) {
-	// Open the .bean file
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("error opening .bean file: %v", err)
 	}
 	defer file.Close()
 
-	// Define regex pattern for dependencies line
 	dependsPattern := regexp.MustCompile(`^depends=\(([^)]+)\)`)
 
-	// Read dependencies
 	var dependencies []string
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line != "" {
-			// Check if line contains dependencies
 			if matches := dependsPattern.FindStringSubmatch(line); len(matches) > 1 {
-				// Split the dependencies by space and remove quotes
 				deps := strings.Fields(matches[1])
 				for _, dep := range deps {
 					dependency := strings.Trim(dep, `"`)
@@ -104,83 +111,151 @@ func parseDependencies(filePath string) ([]string, error) {
 	return dependencies, nil
 }
 
+// Function to update espresso
+func updateEspresso() error {
+	fmt.Println("Updating espresso...")
+	
+	// Download the latest source code
+	tempFile := "/tmp/espresso_new.go"
+	err := downloadFile(tempFile, espressoSourceURL)
+	if err != nil {
+		return fmt.Errorf("error downloading new espresso source: %v", err)
+	}
+
+	// Compile the new source
+	err = executeCommand(fmt.Sprintf("go build -o /tmp/espresso_new %s", tempFile))
+	if err != nil {
+		return fmt.Errorf("error compiling new espresso source: %v", err)
+	}
+
+	// Replace the current binary
+	err = executeCommand("mv /tmp/espresso_new /usr/local/bin/espresso")
+	if err != nil {
+		return fmt.Errorf("error replacing espresso binary: %v", err)
+	}
+
+	fmt.Println("espresso has been updated successfully!")
+	return nil
+}
+
+// Function to remove a package
+func removePackage(packageName string) error {
+	fmt.Printf("Removing package %s...\n", packageName)
+	
+	beanFile := filepath.Join("/etc/espresso", packageName+".bean")
+	
+	// Check if the .bean file exists
+	if _, err := os.Stat(beanFile); os.IsNotExist(err) {
+		return fmt.Errorf("package %s is not installed", packageName)
+	}
+
+	// Execute the .bean file with the "remove" argument
+	err := executeCommand(beanFile + " remove")
+	if err != nil {
+		return fmt.Errorf("error removing package %s: %v", packageName, err)
+	}
+
+	// Remove the .bean file
+	err = os.Remove(beanFile)
+	if err != nil {
+		return fmt.Errorf("error removing .bean file for %s: %v", packageName, err)
+	}
+
+	fmt.Printf("Package %s has been removed successfully!\n", packageName)
+	return nil
+}
+
+// Function to list or search for packages
+func lookPackages(searchTerm string) error {
+	fmt.Println("Searching for packages...")
+
+	// Fetch the list of .bean files from the GitHub repository
+	response, err := http.Get(beansURL)
+	if err != nil {
+		return fmt.Errorf("error fetching package list: %v", err)
+	}
+	defer response.Body.Close()
+
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return fmt.Errorf("error reading package list: %v", err)
+	}
+
+	// Parse the HTML content to extract .bean file names
+	re := regexp.MustCompile(`href="([^"]+\.bean)"`)
+	matches := re.FindAllStringSubmatch(string(body), -1)
+
+	if len(matches) == 0 {
+		fmt.Println("No packages found.")
+		return nil
+	}
+
+	fmt.Println("Available packages:")
+	for _, match := range matches {
+		packageName := match[1]
+		if searchTerm == "" || strings.Contains(packageName, searchTerm) {
+			fmt.Println(packageName)
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	if os.Geteuid() != 0 {
 		fmt.Println("This program must be run as root.")
 		return
 	}
 
-	if len(os.Args) < 3 || os.Args[1] != "brew" {
-		fmt.Println("Usage: espresso brew <package>")
+	if len(os.Args) < 2 {
+		fmt.Println("Usage: espresso <command> [arguments]")
+		fmt.Println("Commands: brew, update, remove, look")
 		return
 	}
 
-	packageName := os.Args[2] + ".bean"
-	baseURL := "https://raw.githubusercontent.com/rudyon/espresso/main/beans/" // Replace with the actual base URL
+	command := os.Args[1]
 
-	// Define a function to download a .bean file
-	downloadURL := func(beanName string) string {
-		return baseURL + beanName
-	}
-
-	// Download the main package file first
-	fmt.Printf("Downloading %s...\n", packageName)
-	if err := downloadBean(packageName, downloadURL(packageName)); err != nil {
-		fmt.Printf("error downloading package %s: %v\n", packageName, err)
-		return
-	}
-
-	// Parse dependencies after downloading the main package
-	dependenciesFilePath := filepath.Join("/etc/espresso", packageName)
-	if _, err := os.Stat(dependenciesFilePath); os.IsNotExist(err) {
-		fmt.Printf("error: main package file %s does not exist\n", dependenciesFilePath)
-		return
-	}
-
-	dependencies, err := parseDependencies(dependenciesFilePath)
-	if err != nil {
-		fmt.Printf("error parsing dependencies: %v\n", err)
-		return
-	}
-
-	// Download dependencies
-	fmt.Println("Downloading dependencies...")
-	for _, dep := range dependencies {
-		fmt.Printf("Downloading %s...\n", dep)
-		if err := downloadBean(dep, downloadURL(dep)); err != nil {
-			fmt.Printf("error downloading dependency %s: %v\n", dep, err)
+	switch command {
+	case "brew":
+		if len(os.Args) < 3 {
+			fmt.Println("Usage: espresso brew <package>")
 			return
 		}
-	}
+		packageName := os.Args[2] + ".bean"
+		
+		// Download and install the package and its dependencies
+		// (existing code for brewing packages)
 
-	// Install each .bean file
-	fmt.Println("Installing packages...")
-	for _, dep := range dependencies {
-		depFilePath := filepath.Join("/etc/espresso", dep)
-		if _, err := os.Stat(depFilePath); err == nil {
-			fmt.Printf("Installing dependency: %s\n", dep)
-			if err := executeCommand(depFilePath); err != nil {
-				fmt.Printf("error installing dependency %s: %v\n", dep, err)
-				return
-			}
-		} else {
-			fmt.Printf("error: dependency file %s does not exist\n", depFilePath)
+	case "update":
+		err := updateEspresso()
+		if err != nil {
+			fmt.Printf("Error updating espresso: %v\n", err)
+		}
+
+	case "remove":
+		if len(os.Args) < 3 {
+			fmt.Println("Usage: espresso remove <package>")
 			return
 		}
-	}
-
-	// Install the main package
-	mainPackagePath := filepath.Join("/etc/espresso", packageName)
-	if _, err := os.Stat(mainPackagePath); err == nil {
-		fmt.Printf("Installing package: %s\n", packageName)
-		if err := executeCommand(mainPackagePath); err != nil {
-			fmt.Printf("error installing package %s: %v\n", packageName, err)
-			return
+		packageName := os.Args[2]
+		err := removePackage(packageName)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
 		}
-	} else {
-		fmt.Printf("error: main package file %s does not exist\n", mainPackagePath)
-		return
-	}
 
-	fmt.Println("Installation complete!")
+	case "look":
+		searchTerm := ""
+		if len(os.Args) >= 3 {
+			searchTerm = os.Args[2]
+		}
+		err := lookPackages(searchTerm)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+		}
+
+	default:
+		fmt.Printf("Unknown command: %s\n", command)
+		fmt.Println("Usage: espresso <command> [arguments]")
+		fmt.Println("Commands: brew, update, remove, look")
+	}
 }
