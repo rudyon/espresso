@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,10 +15,22 @@ import (
 )
 
 const (
-	baseURL = "https://raw.githubusercontent.com/rudyon/espresso/main/"
-	beansURL = baseURL + "beans/"
+	baseURL           = "https://raw.githubusercontent.com/rudyon/espresso/main/"
+	beansURL          = baseURL + "beans/"
 	espressoSourceURL = baseURL + "main.go"
 )
+
+var client *http.Client
+
+func init() {
+	// Create a custom HTTP client with TLS configuration
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client = &http.Client{Transport: tr}
+
+	fmt.Println("Warning: TLS certificate verification is disabled. This is insecure.")
+}
 
 // Function to execute a shell command
 func executeCommand(command string) error {
@@ -34,7 +47,7 @@ func executeCommand(command string) error {
 
 // Function to download a file given its URL
 func downloadFile(filePath, url string) error {
-	response, err := http.Get(url)
+	response, err := client.Get(url)
 	if err != nil {
 		return fmt.Errorf("error downloading file: %v", err)
 	}
@@ -114,7 +127,7 @@ func parseDependencies(filePath string) ([]string, error) {
 // Function to update espresso
 func updateEspresso() error {
 	fmt.Println("Updating espresso...")
-	
+
 	// Download the latest source code
 	tempFile := "/tmp/espresso_new.go"
 	err := downloadFile(tempFile, espressoSourceURL)
@@ -141,9 +154,9 @@ func updateEspresso() error {
 // Function to remove a package
 func removePackage(packageName string) error {
 	fmt.Printf("Removing package %s...\n", packageName)
-	
+
 	beanFile := filepath.Join("/etc/espresso", packageName+".bean")
-	
+
 	// Check if the .bean file exists
 	if _, err := os.Stat(beanFile); os.IsNotExist(err) {
 		return fmt.Errorf("package %s is not installed", packageName)
@@ -170,7 +183,7 @@ func lookPackages(searchTerm string) error {
 	fmt.Println("Searching for packages...")
 
 	// Fetch the list of .bean files from the GitHub repository
-	response, err := http.Get(beansURL)
+	response, err := client.Get(beansURL)
 	if err != nil {
 		return fmt.Errorf("error fetching package list: %v", err)
 	}
@@ -201,6 +214,15 @@ func lookPackages(searchTerm string) error {
 	return nil
 }
 
+// Function to check connection to GitHub
+func checkGitHubConnection() error {
+	_, err := client.Get("https://github.com")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func main() {
 	if os.Geteuid() != 0 {
 		fmt.Println("This program must be run as root.")
@@ -222,10 +244,15 @@ func main() {
 			return
 		}
 		packageName := os.Args[2] + ".bean"
-		
+
 		fmt.Printf("Downloading %s...\n", packageName)
 		if err := downloadBean(packageName); err != nil {
 			fmt.Printf("Error downloading package %s: %v\n", packageName, err)
+			fmt.Println("Checking connection to GitHub...")
+			if err := checkGitHubConnection(); err != nil {
+				fmt.Printf("Error connecting to GitHub: %v\n", err)
+				fmt.Println("Please check your internet connection and try again.")
+			}
 			return
 		}
 
@@ -245,7 +272,7 @@ func main() {
 				fmt.Printf("Error downloading dependency %s: %v\n", dep, err)
 				return
 			}
-			
+
 			depFilePath := filepath.Join("/etc/espresso", dep)
 			fmt.Printf("Installing dependency: %s\n", dep)
 			if err := executeCommand(depFilePath); err != nil {
@@ -296,5 +323,3 @@ func main() {
 		fmt.Println("Commands: brew, update, remove, look")
 	}
 }
-
-
