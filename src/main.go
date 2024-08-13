@@ -223,8 +223,45 @@ func main() {
 		}
 		packageName := os.Args[2] + ".bean"
 		
-		// Download and install the package and its dependencies
-		// (existing code for brewing packages)
+		fmt.Printf("Downloading %s...\n", packageName)
+		if err := downloadBean(packageName); err != nil {
+			fmt.Printf("Error downloading package %s: %v\n", packageName, err)
+			return
+		}
+
+		// Parse dependencies
+		dependenciesFilePath := filepath.Join("/etc/espresso", packageName)
+		dependencies, err := parseDependencies(dependenciesFilePath)
+		if err != nil {
+			fmt.Printf("Error parsing dependencies: %v\n", err)
+			return
+		}
+
+		// Download and install dependencies
+		fmt.Println("Downloading and installing dependencies...")
+		for _, dep := range dependencies {
+			fmt.Printf("Downloading %s...\n", dep)
+			if err := downloadBean(dep); err != nil {
+				fmt.Printf("Error downloading dependency %s: %v\n", dep, err)
+				return
+			}
+			
+			depFilePath := filepath.Join("/etc/espresso", dep)
+			fmt.Printf("Installing dependency: %s\n", dep)
+			if err := executeCommand(depFilePath); err != nil {
+				fmt.Printf("Error installing dependency %s: %v\n", dep, err)
+				return
+			}
+		}
+
+		// Install the main package
+		fmt.Printf("Installing package: %s\n", packageName)
+		if err := executeCommand(dependenciesFilePath); err != nil {
+			fmt.Printf("Error installing package %s: %v\n", packageName, err)
+			return
+		}
+
+		fmt.Println("Installation complete!")
 
 	case "update":
 		err := updateEspresso()
@@ -259,3 +296,5 @@ func main() {
 		fmt.Println("Commands: brew, update, remove, look")
 	}
 }
+
+
