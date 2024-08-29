@@ -1,7 +1,7 @@
 #!/bin/bash
 depends=("libc6-dev")  # Adjust dependencies if needed
-
 echo "Brewing hello..."
+
 # Ensure /etc/espresso directory exists
 mkdir -p /etc/espresso
 cd /etc/espresso
@@ -19,11 +19,8 @@ tar -xf hello.${HELLO_TAR}
 
 # Change directory to hello
 cd hello-${HELLO_VERSION}
-
 # Configure and install hello
 ./configure --prefix=/usr/local
 make
 sudo make install
-
 echo "Brewed hello. Your coffee is ready. ☕"
-
